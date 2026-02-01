@@ -1,0 +1,12 @@
+[package]
+name = "mot-benchmark-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+jamtrack-rs = { path = "../jamtrack-rs" }
+indicatif = "0.17"
+
+[[bin]]
+name = "mot_benchmark"
+path = "src/mot_benchmark.rs"

@@ -1,0 +1,9 @@
+[submodule "trackers/FastTracker"]
+	path = trackers/FastTracker
+	url = https://github.com/Hamidreza-Hashempoor/FastTracker.git
+[submodule "trackers/ByteTrack"]
+	path = trackers/ByteTrack
+	url = https://github.com/ifzhang/ByteTrack.git
+[submodule "trackers/BoostTrack"]
+	path = trackers/BoostTrack
+	url = https://github.com/vukasin-stanojevic/BoostTrack.git

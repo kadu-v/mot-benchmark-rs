@@ -1,0 +1,22 @@
+[project]
+name = "mot-benchmark-rs"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "cython>=3.2.4",
+    "cython-bbox>=0.1.5",
+    "lapx>=0.9.4",
+    "loguru>=0.7.3",
+    "numpy>=2.4.1",
+    "opencv-python>=4.13.0.90",
+    "pycocotools>=2.0.11",
+    "scipy>=1.17.0",
+    "tabulate>=0.9.0",
+    "thop>=0.1.1.post2209072238",
+    "torch>=2.10.0",
+    "torchvision>=0.25.0",
+    "tqdm>=4.67.2",
+    "trackeval>=1.1.0",
+]
