@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# TODO: Update to published URL after jamtrack-rs is public
+# jamtrack-rs = { git = "https://github.com/<username>/jamtrack-rs.git" }
 jamtrack-rs = { path = "../jamtrack-rs" }
 indicatif = "0.17"
 

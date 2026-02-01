@@ -2,6 +2,88 @@
 
 MOT17データセットを使用して、Rust実装のトラッカー（ByteTracker, BoostTracker）をベンチマークするためのツールです。
 
+## クイックスタート（結果の再現）
+
+以下の手順でベンチマーク結果を再現できます。
+
+### 1. リポジトリのクローン
+
+```bash
+git clone --recursive https://github.com/<username>/mot-benchmark-rs.git
+cd mot-benchmark-rs
+```
+
+### 2. 依存関係のインストール
+
+```bash
+# Python依存関係
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync
+
+# Rust (未インストールの場合)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+### 3. データセットとモデルの準備
+
+```bash
+# MOT17データセットのダウンロード
+mkdir -p datasets
+cd datasets
+wget https://motchallenge.net/data/MOT17.zip
+cd ..
+
+# YOLOXモデルのダウンロード
+wget https://github.com/ifzhang/ByteTrack/releases/download/v0.1.0/bytetrack_x_mot17.pth.tar
+
+# データセット展開
+uv run python scripts/prepare_dataset.py
+```
+
+### 4. ベンチマーク実行
+
+```bash
+# Step 1: YOLOX検出
+uv run python scripts/run_yolox_detection.py
+
+# Step 2: Rustトラッカー実行
+cargo run --release --bin mot_benchmark -- --tracker all
+
+# Step 3: Python公式トラッカー実行 (比較用)
+uv run python scripts/run_python_bytetracker.py
+uv run python scripts/run_python_bytetracker.py --tuned
+uv run python scripts/run_python_boosttracker.py --mode boost
+uv run python scripts/run_python_boosttracker.py --mode boost++
+uv run python scripts/run_python_boosttracker.py --mode boost --use-ecc
+uv run python scripts/run_python_boosttracker.py --mode boost++ --use-ecc
+
+# Step 4: 評価
+uv run python scripts/evaluate.py --trackers \
+    ByteTracker ByteTrackerTuned \
+    BoostTrack BoostTrackPlusPlus \
+    OfficialByteTracker OfficialByteTrackerTuned \
+    OfficialBoostTrack OfficialBoostTrackPlusPlus \
+    OfficialBoostTrackECC OfficialBoostTrackPlusPlusECC
+```
+
+### 5. jamtrack-rsの準備
+
+Rustトラッカーライブラリ [jamtrack-rs](https://github.com/<username>/jamtrack-rs) が必要です:
+
+```bash
+# mot-benchmark-rs と同じ親ディレクトリにクローン
+cd ..
+git clone https://github.com/<username>/jamtrack-rs.git
+cd mot-benchmark-rs
+```
+
+### 動作確認環境
+
+- macOS 14.0+ (Apple Silicon M1/M2/M3)
+- Python 3.11
+- Rust 1.75+
+- YOLOX-X detector (`bytetrack_x_mot17.pth.tar`)
+
 ## 概要
 
 このプロジェクトは以下のパイプラインでMOTベンチマークを実行します：
@@ -55,22 +137,12 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 ```
 
-### 2. 外部トラッカーのクローン
+### 2. 外部トラッカーの初期化
 
 ```bash
-mkdir -p trackers
-cd trackers
-
-# ByteTrack
-git clone https://github.com/ifzhang/ByteTrack.git
-
-# BoostTrack
-git clone https://github.com/vukasin-stanojevic/BoostTrack.git
-
-# FastTracker (TrackEval含む)
-git clone https://github.com/bostondiditeam/FastTracker.git
-
-cd ..
+# submoduleとして含まれているため、--recursive でcloneした場合は不要
+# 個別に初期化する場合:
+git submodule update --init --recursive
 ```
 
 ### 3. YOLOXモデルのダウンロード
