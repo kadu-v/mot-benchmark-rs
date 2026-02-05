@@ -70,6 +70,7 @@ dependencies = [
 [[package]]
 name = "jamtrack-rs"
 version = "0.3.1"
+source = "git+https://github.com/kadu-v/jamtrack-rs.git?tag=v0.3.1#7662ba203304936fafd97f84a85e19ae1ff1246a"
 dependencies = [
  "nalgebra",
  "num",
