@@ -1,18 +1,18 @@
 # MOT Benchmark for Rust Trackers
 
-A benchmarking tool for Rust trackers (ByteTracker, BoostTracker) using the MOT17 dataset.
+MOT17データセットを使用して、Rust実装のトラッカー（ByteTracker, BoostTracker）をベンチマークするためのツールです。
 
-## Overview
+## 概要
 
-This project runs the MOT benchmark with the following pipeline:
+このプロジェクトは以下のパイプラインでMOTベンチマークを実行します：
 
 ```
-MOT17 images → YOLOX detections → det.txt → Rust tracker → tracking results.txt → TrackEval
+MOT17画像 → YOLOX検出 → det.txt → Rust Tracker → 追跡結果.txt → TrackEval評価
 ```
 
-## Quickstart (Reproduce Results)
+## クイックスタート（結果の再現）
 
-Use the shortest path below to reproduce the benchmark (details later).
+以下の最短手順でベンチマーク結果を再現できます（詳細は後述）。
 
 ```bash
 git clone --recursive https://github.com/<username>/mot-benchmark-rs.git
@@ -28,109 +28,109 @@ uv run python scripts/prepare_dataset.py
 ./scripts/run_benchmark.sh
 ```
 
-See "Environment Setup" and "Benchmark Execution" for installing Rust/uv or running steps individually.
+※ Rust/uv の導入や個別実行は「環境構築」「ベンチマーク実行」を参照してください。
 
-## Directory Structure
+## ディレクトリ構成
 
 ```
 mot-benchmark-rs/
 ├── src/
-│   └── mot_benchmark.rs      # Rust tracker benchmark
+│   └── mot_benchmark.rs      # Rustトラッカーベンチマーク
 ├── scripts/
-│   ├── prepare_dataset.py    # Dataset preparation
-│   ├── run_yolox_detection.py # YOLOX detection
-│   ├── run_python_bytetracker.py  # Python ByteTracker (for comparison)
-│   ├── run_python_boosttracker.py # Python BoostTracker (for comparison)
-│   ├── evaluate.py           # TrackEval evaluation
+│   ├── prepare_dataset.py    # データセット準備
+│   ├── run_yolox_detection.py # YOLOX検出実行
+│   ├── run_python_bytetracker.py  # Python ByteTracker (比較用)
+│   ├── run_python_boosttracker.py # Python BoostTracker (比較用)
+│   ├── evaluate.py           # TrackEval評価
 │   ├── interpolation.py      # DTI (Disconnected Track Interpolation)
-│   └── run_benchmark.sh      # Batch runner
-├── trackers/                  # External trackers (git clone)
-│   ├── ByteTrack/            # Official ByteTrack
-│   ├── BoostTrack/           # Official BoostTrack
-│   └── FastTracker/          # FastTracker (includes TrackEval)
+│   └── run_benchmark.sh      # 一括実行スクリプト
+├── trackers/                  # 外部トラッカー (git clone)
+│   ├── ByteTrack/            # 公式ByteTrack
+│   ├── BoostTrack/           # 公式BoostTrack
+│   └── FastTracker/          # FastTracker (TrackEval含む)
 ├── datasets/
-│   └── MOT17.zip             # MOT17 dataset
+│   └── MOT17.zip             # MOT17データセット
 ├── benchmark/
-│   └── data/                 # Benchmark data (generated)
-├── bytetrack_s_mot17.pth.tar # YOLOX model
+│   └── data/                 # ベンチマーク用データ (自動生成)
+├── bytetrack_s_mot17.pth.tar # YOLOXモデル
 ├── Cargo.toml
 └── pyproject.toml
 ```
 
-## Environment Setup
+## 環境構築
 
-### Requirements
+### 必要条件
 
 - Python 3.11+
 - Rust 1.75+
-- [uv](https://github.com/astral-sh/uv) (Python package manager)
+- [uv](https://github.com/astral-sh/uv) (Python パッケージマネージャー)
 
-### Tool Installation
+### ツールのインストール
 
 ```bash
-# uv (if not installed)
+# uv (未インストールの場合)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Rust (if not installed)
+# Rust (未インストールの場合)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Python dependencies
+# Python依存関係
 uv sync
 ```
 
-### jamtrack-rs
+### jamtrack-rs の準備
 
-Use the Rust tracker library [jamtrack-rs](https://github.com/kadu-v/jamtrack-rs) tag v0.3.1.
+Rustトラッカーライブラリ [jamtrack-rs](https://github.com/kadu-v/jamtrack-rs) の v0.3.1 tag を使用します。
 
-### Initialize External Trackers
+### 外部トラッカーの初期化
 
 ```bash
-# Not required if cloned with --recursive
-# If you need to initialize manually:
+# submoduleとして含まれているため、--recursive でcloneした場合は不要
+# 個別に初期化する場合:
 git submodule update --init --recursive
 ```
 
-### Verified Environment
+### 動作確認環境
 
 - macOS 14.0+ (Apple Silicon M1/M2/M3)
 - Python 3.11
 - Rust 1.75+
 - YOLOX-X detector (`bytetrack_x_mot17.pth.tar`)
 
-### Optional: YOLOX-S Model (Lightweight)
+### YOLOX-S モデル (軽量版) 追加で使う場合
 
 ```bash
 wget https://github.com/ifzhang/ByteTrack/releases/download/v0.1.0/bytetrack_s_mot17.pth.tar
 ```
 
-## Benchmark Execution
+## ベンチマーク実行
 
-### Batch Run
+### 一括実行
 
 ```bash
 ./scripts/run_benchmark.sh
 ```
 
-### Run Each Step
+### 個別実行
 
-#### Step 1: YOLOX Detection
+#### Step 1: YOLOX検出
 
 ```bash
-# YOLOX-X (default, higher accuracy)
+# YOLOX-X (デフォルト、高精度)
 uv run python scripts/run_yolox_detection.py
 
-# YOLOX-S (lightweight)
+# YOLOX-S (軽量版)
 uv run python scripts/run_yolox_detection.py \
     --exp-file trackers/FastTracker/exps/example/mot/yolox_s_mix_det.py \
     --checkpoint bytetrack_s_mot17.pth.tar
 ```
 
-Output: `benchmark/data/gt/mot_challenge/MOT17-train/*/det/det.txt`
+出力: `benchmark/data/gt/mot_challenge/MOT17-train/*/det/det.txt`
 
-#### Step 2: Run Rust Trackers
+#### Step 2: Rustトラッカー実行
 
 ```bash
-# ByteTracker (tuned)
+# ByteTracker (チューニングあり)
 cargo run --release --bin mot_benchmark -- \
     --data-dir ./benchmark/data \
     --output-dir ./benchmark/data \
@@ -155,32 +155,32 @@ cargo run --release --bin mot_benchmark -- \
     --tracker BoostTrackPlusPlus
 ```
 
-Available trackers:
-- `ByteTracker` - fixed parameters
-- `ByteTrackerTuned` - sequence-specific parameters
-- `BoostTrack` - base BoostTrack
+利用可能なトラッカー:
+- `ByteTracker` - 固定パラメータ
+- `ByteTrackerTuned` - シーケンス固有パラメータ
+- `BoostTrack` - 基本BoostTrack
 - `BoostTrackPlus` - BoostTrack+
 - `BoostTrackPlusPlus` - BoostTrack++
 
-#### Step 3: TrackEval Evaluation
+#### Step 3: TrackEval評価
 
 ```bash
-# Single tracker
+# 単一トラッカー評価
 uv run python scripts/evaluate.py --trackers ByteTrackerTuned
 
-# Compare multiple trackers
+# 複数トラッカー比較
 uv run python scripts/evaluate.py --trackers ByteTrackerTuned BoostTrack BoostTrackPlusPlus
 ```
 
-## Comparison with Official Python Implementations
+## Python公式実装との比較
 
-### Python ByteTracker
+### Python ByteTracker実行
 
 ```bash
 uv run python scripts/run_python_bytetracker.py --tuned
 ```
 
-### Python BoostTracker
+### Python BoostTracker実行
 
 ```bash
 # BoostTrack
@@ -190,7 +190,7 @@ uv run python scripts/run_python_boosttracker.py --mode boost
 uv run python scripts/run_python_boosttracker.py --mode boost++
 ```
 
-### Comparative Evaluation
+### 比較評価
 
 ```bash
 uv run python scripts/evaluate.py \
@@ -199,9 +199,9 @@ uv run python scripts/evaluate.py \
                BoostTrackPlusPlus OfficialBoostTrackPlusPlus
 ```
 
-## Benchmark Results (MOT17-train)
+## ベンチマーク結果 (MOT17-train)
 
-### Using YOLOX-X (recommended)
+### YOLOX-X 検出器使用 (推奨)
 
 | Tracker | HOTA | MOTA | IDF1 | IDSW |
 |---------|------|------|------|------|
@@ -218,11 +218,11 @@ uv run python scripts/evaluate.py \
 | BoostTrackPlus (Rust) | 56.62 | 66.47 | 65.40 | 774 |
 
 > **Note**:
-> - ECC improves HOTA/IDF1/IDSW significantly via camera motion compensation.
-> - Rust BoostTrack does not implement ECC (camera motion compensation) or Embedding (Re-ID), so HOTA/IDF1 are slightly lower.
-> - MOTA is mainly determined by the core algorithm, so Rust and Python are roughly comparable.
+> - ECC版はカメラモーション補正により、特にHOTA/IDF1/IDSWで大きな改善
+> - Rust版BoostTrackはECC（カメラモーション補正）とEmbedding（Re-ID特徴量）が未実装のため、HOTA/IDF1が若干低い
+> - MOTAはコアアルゴリズムで決まるため、Rust版とPython版でほぼ同等
 
-### Using YOLOX-S (lightweight)
+### YOLOX-S 検出器使用 (軽量版)
 
 | Tracker | HOTA | MOTA | IDF1 |
 |---------|------|------|------|
@@ -231,53 +231,53 @@ uv run python scripts/evaluate.py \
 | BoostTrack (Rust) | 56.89 | 64.79 | 65.59 |
 | OfficialBoostTrack (Python) | 58.40 | 64.80 | 67.97 |
 
-## Metrics
+## 評価メトリクス
 
-- **MOTA** (Multiple Object Tracking Accuracy): overall tracking accuracy
-- **HOTA** (Higher Order Tracking Accuracy): joint detection and association
-- **IDF1**: harmonic mean of ID precision and recall
-- **IDSW**: number of ID switches
+- **MOTA** (Multiple Object Tracking Accuracy): 追跡精度の総合指標
+- **HOTA** (Higher Order Tracking Accuracy): 検出とアソシエーションの統合評価
+- **IDF1**: ID保持率の調和平均
+- **IDSW**: IDスイッチ回数
 
-## Rust vs Python Implementation Differences
+## Rust vs Python 実装の違い
 
-### Implemented Features
+### 実装済み機能
 
-| Feature | ByteTracker | BoostTracker |
+| 機能 | ByteTracker | BoostTracker |
 |------|:-----------:|:------------:|
 | Kalman Filter | ✅ | ✅ |
 | IoU Association | ✅ | ✅ |
-| Two-stage matching | ✅ | - |
+| 2段階マッチング | ✅ | - |
 | DLO Boost | - | ✅ |
 | DUO Boost | - | ✅ |
-| Mahalanobis Distance | - | ✅ |
+| Mahalanobis距離 | - | ✅ |
 | Shape Similarity | - | ✅ |
 | Soft BIoU | - | ✅ |
 
-### Missing Features (BoostTracker)
+### 未実装機能 (BoostTracker)
 
-| Feature | Description | Impact |
+| 機能 | 説明 | 影響 |
 |------|------|------|
-| **ECC** | camera motion compensation | more ID switches with moving cameras |
-| **Embedding** | Re-ID features (CNN) | lower HOTA/IDF1 |
+| **ECC** | カメラモーション補正 | 動くカメラでのIDSW増加 |
+| **Embedding** | Re-ID特徴量 (CNN) | HOTA/IDF1の低下 |
 
-Because these features are missing, Rust BoostTrack has slightly lower HOTA/IDF1 than the official Python version. MOTA is mostly determined by the core algorithm, so the values are roughly comparable.
+これらの機能が未実装のため、Rust版BoostTrackのHOTA/IDF1は公式Python版より若干低くなります。MOTAはコアアルゴリズムで決まるため、ほぼ同等の値を達成しています。
 
-## Troubleshooting
+## トラブルシューティング
 
-### NumPy Compatibility Error
+### NumPy互換性エラー
 
-If ByteTrack raises a `np.float` error:
+ByteTrackで `np.float` エラーが発生する場合:
 
 ```bash
-# Replace in trackers/ByteTrack/yolox/tracker/*.py
-# np.float → np.float64
+# trackers/ByteTrack/yolox/tracker/*.py で
+# np.float → np.float64 に置換
 sed -i '' 's/np\.float\b/np.float64/g' trackers/ByteTrack/yolox/tracker/*.py
 ```
 
-### Device Selection
+### デバイス選択
 
 ```bash
-# Apple Silicon (MPS) - default
+# Apple Silicon (MPS) - デフォルト
 uv run python scripts/run_yolox_detection.py --device mps
 
 # NVIDIA GPU (CUDA)
@@ -287,11 +287,11 @@ uv run python scripts/run_yolox_detection.py --device cuda
 uv run python scripts/run_yolox_detection.py --device cpu
 ```
 
-## License
+## ライセンス
 
 MIT License
 
-## References
+## 参考文献
 
 - [ByteTrack](https://github.com/ifzhang/ByteTrack)
 - [BoostTrack](https://github.com/vukasin-stanojevic/BoostTrack)
