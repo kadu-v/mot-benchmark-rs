@@ -1,6 +1,6 @@
 # MOT Benchmark for Rust Trackers
 
-A benchmarking tool for Rust trackers (ByteTracker, BoostTracker) using the MOT17 dataset.
+A benchmarking tool for Rust trackers (ByteTracker, BoostTracker, OC-SORT) using the MOT17 dataset.
 
 ## Overview
 
@@ -146,6 +146,14 @@ cargo run --release --bin mot_benchmark -- \
     --split train \
     --tracker BoostTrack
 
+# BoostTracker (ECC enabled)
+cargo run --release --bin mot_benchmark -- \
+    --data-dir ./benchmark/data \
+    --output-dir ./benchmark/data \
+    --benchmark MOT17 \
+    --split train \
+    --tracker BoostTrackECC
+
 # BoostTrack++
 cargo run --release --bin mot_benchmark -- \
     --data-dir ./benchmark/data \
@@ -159,8 +167,10 @@ Available trackers:
 - `ByteTracker` - fixed parameters
 - `ByteTrackerTuned` - sequence-specific parameters
 - `BoostTrack` - base BoostTrack
+- `BoostTrackECC` - BoostTrack with ECC (camera motion compensation)
 - `BoostTrackPlus` - BoostTrack+
 - `BoostTrackPlusPlus` - BoostTrack++
+- `OCSortTracker` - OC-SORT (Observation-Centric SORT)
 
 #### Step 3: TrackEval Evaluation
 
@@ -169,7 +179,7 @@ Available trackers:
 uv run python scripts/evaluate.py --trackers ByteTrackerTuned
 
 # Compare multiple trackers
-uv run python scripts/evaluate.py --trackers ByteTrackerTuned BoostTrack BoostTrackPlusPlus
+uv run python scripts/evaluate.py --trackers ByteTrackerTuned BoostTrack BoostTrackECC BoostTrackPlusPlus
 ```
 
 ## Comparison with Official Python Implementations
@@ -208,18 +218,22 @@ uv run python scripts/evaluate.py \
 | **OfficialBoostTrack++ECC (Python)** | **69.71** | 79.92 | **79.82** | **287** |
 | OfficialBoostTrackECC (Python) | 69.28 | 79.17 | 79.10 | 308 |
 | **ByteTrackerTuned (Rust)** | 68.55 | **80.95** | 78.27 | 450 |
+| BoostTrack++ECC (Rust) | 68.35 | 79.80 | 77.98 | 318 |
+| BoostTrackECC (Rust) | 68.39 | 79.06 | 77.94 | 344 |
+| ByteTracker (Rust) | 68.35 | 80.97 | 77.89 | 454 |
 | OfficialByteTrackerTuned (Python) | 67.92 | 80.90 | 77.47 | 453 |
 | OfficialBoostTrack++ (Python) | 67.87 | 78.89 | 76.91 | 515 |
+| OCSortTracker (Rust) | 67.73 | 78.55 | 76.67 | 484 |
 | OfficialBoostTrack (Python) | 67.30 | 78.26 | 76.00 | 520 |
-| BoostTrack (Rust) | 66.18 | 78.20 | 74.27 | 539 |
-| BoostTrack++ (Rust) | 66.11 | 78.81 | 74.21 | 570 |
-| OfficialByteTracker (Python) | 59.73 | 70.31 | 69.94 | 483 |
-| ByteTracker (Rust) | 58.98 | 69.91 | 68.68 | 503 |
-| BoostTrackPlus (Rust) | 56.62 | 66.47 | 65.40 | 774 |
+| OfficialByteTracker (Python) | 67.82 | 80.92 | 77.29 | 458 |
+| BoostTrack++ (Rust) | 66.02 | 78.86 | 74.29 | 558 |
+| BoostTrack (Rust) | 66.03 | 78.24 | 74.13 | 536 |
+| BoostTrackPlus (Rust) | 65.93 | 78.57 | 74.11 | 560 |
 
 > **Note**:
 > - ECC improves HOTA/IDF1/IDSW significantly via camera motion compensation.
-> - Rust BoostTrack does not implement ECC (camera motion compensation) or Embedding (Re-ID), so HOTA/IDF1 are slightly lower.
+> - This benchmark includes Rust ECC variants (`BoostTrackECC`, `BoostTrackPlusPlusECC`).
+> - Python `OfficialBoostTrack*` values in this repo are measured with `use_embedding=False` for fair non-ReID comparison.
 > - MOTA is mainly determined by the core algorithm, so Rust and Python are roughly comparable.
 
 ### Using YOLOX-S (lightweight)
@@ -242,25 +256,28 @@ uv run python scripts/evaluate.py \
 
 ### Implemented Features
 
-| Feature | ByteTracker | BoostTracker |
-|------|:-----------:|:------------:|
-| Kalman Filter | ✅ | ✅ |
-| IoU Association | ✅ | ✅ |
-| Two-stage matching | ✅ | - |
-| DLO Boost | - | ✅ |
-| DUO Boost | - | ✅ |
-| Mahalanobis Distance | - | ✅ |
-| Shape Similarity | - | ✅ |
-| Soft BIoU | - | ✅ |
+| Feature | ByteTracker | BoostTracker | OC-SORT |
+|------|:-----------:|:------------:|:-------:|
+| Kalman Filter | ✅ | ✅ | ✅ |
+| IoU Association | ✅ | ✅ | ✅ |
+| Two-stage matching (BYTE) | ✅ | - | optional |
+| VDC (Velocity Direction Consistency) | - | - | ✅ |
+| OCR (Observation-Centric Re-association) | - | - | ✅ |
+| Online Smoothing (KF freeze/unfreeze) | - | - | ✅ |
+| DLO Boost | - | ✅ | - |
+| DUO Boost | - | ✅ | - |
+| Mahalanobis Distance | - | ✅ | - |
+| Shape Similarity | - | ✅ | - |
+| Soft BIoU | - | ✅ | - |
+| ECC (camera motion compensation) | - | ✅ | - |
 
 ### Missing Features (BoostTracker)
 
 | Feature | Description | Impact |
 |------|------|------|
-| **ECC** | camera motion compensation | more ID switches with moving cameras |
 | **Embedding** | Re-ID features (CNN) | lower HOTA/IDF1 |
 
-Because these features are missing, Rust BoostTrack has slightly lower HOTA/IDF1 than the official Python version. MOTA is mostly determined by the core algorithm, so the values are roughly comparable.
+Because embedding is not used in this benchmark setup, there is still a small HOTA/IDF1 gap vs Python. MOTA is mostly determined by the core algorithm, so the values are roughly comparable.
 
 ## Troubleshooting
 
@@ -295,5 +312,6 @@ MIT License
 
 - [ByteTrack](https://github.com/ifzhang/ByteTrack)
 - [BoostTrack](https://github.com/vukasin-stanojevic/BoostTrack)
+- [OC-SORT](https://github.com/noahcao/OC_SORT)
 - [MOTChallenge](https://motchallenge.net/)
 - [TrackEval](https://github.com/JonathonLuiten/TrackEval)

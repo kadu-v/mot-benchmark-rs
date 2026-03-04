@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-jamtrack-rs = { git = "https://github.com/kadu-v/jamtrack-rs.git", tag = "v0.3.1" }
+jamtrack-rs = { path = "../jamtrack-rs" }
 indicatif = "0.17"
+image = { version = "0.25.2", default-features = false, features = ["jpeg", "png"] }
 
 [[bin]]
 name = "mot_benchmark"

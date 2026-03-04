@@ -12,8 +12,9 @@
 
 use indicatif::{ProgressBar, ProgressStyle};
 use jamtrack_rs::{
-    boost_tracker::BoostTracker, byte_tracker::ByteTracker, object::Object, rect::Rect,
+    boost_tracker::BoostTracker, byte_tracker::ByteTracker, object::Object, rect::Rect, OCSort,
 };
+use image::{GrayImage, ImageReader};
 use std::{
     env,
     error::Error,
@@ -59,8 +60,11 @@ enum TrackerType {
     ByteTracker,
     ByteTrackerTuned,
     BoostTrack,
+    BoostTrackECC,
     BoostTrackPlus,
     BoostTrackPlusPlus,
+    BoostTrackPlusPlusECC,
+    OCSortTracker,
 }
 
 impl TrackerType {
@@ -69,8 +73,13 @@ impl TrackerType {
             "bytetracker" | "byte" => Some(Self::ByteTracker),
             "bytetrackertuned" | "bytetuned" => Some(Self::ByteTrackerTuned),
             "boosttrack" | "boost" => Some(Self::BoostTrack),
+            "boosttrackecc" | "boostecc" | "boost-track-ecc" => Some(Self::BoostTrackECC),
             "boosttrackplus" | "boost+" | "boosttrack+" => Some(Self::BoostTrackPlus),
             "boosttrackplusplus" | "boost++" | "boosttrack++" => Some(Self::BoostTrackPlusPlus),
+            "boosttrackplusplusecc" | "boost++ecc" | "boosttrack++ecc" => {
+                Some(Self::BoostTrackPlusPlusECC)
+            }
+            "ocsort" | "oc-sort" | "ocsorttracker" => Some(Self::OCSortTracker),
             _ => None,
         }
     }
@@ -80,8 +89,11 @@ impl TrackerType {
             Self::ByteTracker => "ByteTracker",
             Self::ByteTrackerTuned => "ByteTrackerTuned",
             Self::BoostTrack => "BoostTrack",
+            Self::BoostTrackECC => "BoostTrackECC",
             Self::BoostTrackPlus => "BoostTrackPlus",
             Self::BoostTrackPlusPlus => "BoostTrackPlusPlus",
+            Self::BoostTrackPlusPlusECC => "BoostTrackPlusPlusECC",
+            Self::OCSortTracker => "OCSortTracker",
         }
     }
 
@@ -90,8 +102,11 @@ impl TrackerType {
             Self::ByteTracker,
             Self::ByteTrackerTuned,
             Self::BoostTrack,
+            Self::BoostTrackECC,
             Self::BoostTrackPlus,
             Self::BoostTrackPlusPlus,
+            Self::BoostTrackPlusPlusECC,
+            Self::OCSortTracker,
         ]
     }
 }
@@ -272,7 +287,7 @@ Options:
   --data-dir <PATH>      Data directory containing gt/mot_challenge/ (default: scripts/benchmark/data)
   --output-dir <PATH>    Output directory for tracking results (default: scripts/benchmark/output)
   --benchmark <NAME>     Benchmark name: MOT17, MOT20 (default: MOT17)
-  --tracker <NAME>       Tracker to run: ByteTracker, BoostTrack, BoostTrackPlus, BoostTrackPlusPlus, all (default: all)
+  --tracker <NAME>       Tracker to run: ByteTracker, ByteTrackerTuned, BoostTrack, BoostTrackECC, BoostTrackPlus, BoostTrackPlusPlus, BoostTrackPlusPlusECC, all (default: all)
   --split <NAME>         Split to evaluate: train, test (default: train)
   --use-gt-as-det        Use ground truth as detection (for testing when det.txt is not available)
   -h, --help             Show this help message
@@ -561,6 +576,31 @@ fn run_tracker_on_sequence(
                 }
             }
         }
+        TrackerType::BoostTrackECC => {
+            let boost_min_box_area = 10.0; // Official BoostTrack uses 10
+            let mut tracker = BoostTracker::new(0.6, 0.3, 30, 3).with_ecc();
+            for frame in 1..=seq_info.seq_length {
+                let dets = &frame_detections.get(frame as usize).map(|v| v.as_slice()).unwrap_or(&[]);
+                let objects = dets_to_objects(dets);
+                let gray_frame = load_frame_as_gray(seq_dir, frame)?;
+                let tracks = tracker.update_with_frame(&objects, &gray_frame)?;
+                for track in tracks {
+                    let width = track.get_width();
+                    let height = track.get_height();
+                    if filter_track_result(width, height, boost_min_box_area) {
+                        results.push(MotResult {
+                            frame,
+                            track_id: track.get_track_id().unwrap_or(0),
+                            bb_left: track.get_x(),
+                            bb_top: track.get_y(),
+                            bb_width: width,
+                            bb_height: height,
+                            conf: track.get_prob(),
+                        });
+                    }
+                }
+            }
+        }
         TrackerType::BoostTrackPlus => {
             let boost_min_box_area = 10.0; // Official BoostTrack uses 10
             let mut tracker = BoostTracker::new(0.6, 0.3, 30, 3).with_boost_plus();
@@ -609,9 +649,88 @@ fn run_tracker_on_sequence(
                 }
             }
         }
+        TrackerType::BoostTrackPlusPlusECC => {
+            let boost_min_box_area = 10.0; // Official BoostTrack uses 10
+            let mut tracker = BoostTracker::new(0.6, 0.3, 30, 3)
+                .with_boost_plus_plus()
+                .with_shape_similarity_v1()
+                .with_ecc();
+            for frame in 1..=seq_info.seq_length {
+                let dets = &frame_detections.get(frame as usize).map(|v| v.as_slice()).unwrap_or(&[]);
+                let objects = dets_to_objects(dets);
+                let gray_frame = load_frame_as_gray(seq_dir, frame)?;
+                let tracks = tracker.update_with_frame(&objects, &gray_frame)?;
+                for track in tracks {
+                    let width = track.get_width();
+                    let height = track.get_height();
+                    if filter_track_result(width, height, boost_min_box_area) {
+                        results.push(MotResult {
+                            frame,
+                            track_id: track.get_track_id().unwrap_or(0),
+                            bb_left: track.get_x(),
+                            bb_top: track.get_y(),
+                            bb_width: width,
+                            bb_height: height,
+                            conf: track.get_prob(),
+                        });
+                    }
+                }
+            }
+        }
+        TrackerType::OCSortTracker => {
+            let mut tracker = OCSort::new(0.6)
+                .with_max_age(30)
+                .with_min_hits(3)
+                .with_iou_threshold(0.3)
+                .with_delta_t(3)
+                .with_inertia(0.2)
+                .with_byte(false);
+            for frame in 1..=seq_info.seq_length {
+                let dets = &frame_detections.get(frame as usize).map(|v| v.as_slice()).unwrap_or(&[]);
+                let objects = dets_to_objects(dets);
+                let tracks = tracker.update(&objects)?;
+                for track in tracks {
+                    let width = track.get_width();
+                    let height = track.get_height();
+                    if filter_track_result(width, height, min_box_area) {
+                        results.push(MotResult {
+                            frame,
+                            track_id: track.get_track_id().unwrap_or(0),
+                            bb_left: track.get_x(),
+                            bb_top: track.get_y(),
+                            bb_width: width,
+                            bb_height: height,
+                            conf: track.get_prob(),
+                        });
+                    }
+                }
+            }
+        }
     }
 
     Ok(results)
+}
+
+fn load_frame_as_gray(seq_dir: &Path, frame: u32) -> Result<GrayImage, Box<dyn Error>> {
+    let img_dir = seq_dir.join("img1");
+    let candidates = [
+        img_dir.join(format!("{frame:06}.jpg")),
+        img_dir.join(format!("{frame:06}.png")),
+    ];
+
+    for path in candidates {
+        if path.exists() {
+            let img = ImageReader::open(&path)?.decode()?.to_luma8();
+            return Ok(img);
+        }
+    }
+
+    Err(format!(
+        "Frame image not found for frame {} in {}",
+        frame,
+        img_dir.display()
+    )
+    .into())
 }
 
 fn dets_to_objects(dets: &[&MotDetection]) -> Vec<Object> {

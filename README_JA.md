@@ -1,6 +1,6 @@
 # MOT Benchmark for Rust Trackers
 
-MOT17データセットを使用して、Rust実装のトラッカー（ByteTracker, BoostTracker）をベンチマークするためのツールです。
+MOT17データセットを使用して、Rust実装のトラッカー（ByteTracker, BoostTracker, OC-SORT）をベンチマークするためのツールです。
 
 ## 概要
 
@@ -146,6 +146,14 @@ cargo run --release --bin mot_benchmark -- \
     --split train \
     --tracker BoostTrack
 
+# BoostTracker (ECC有効)
+cargo run --release --bin mot_benchmark -- \
+    --data-dir ./benchmark/data \
+    --output-dir ./benchmark/data \
+    --benchmark MOT17 \
+    --split train \
+    --tracker BoostTrackECC
+
 # BoostTrack++
 cargo run --release --bin mot_benchmark -- \
     --data-dir ./benchmark/data \
@@ -159,8 +167,10 @@ cargo run --release --bin mot_benchmark -- \
 - `ByteTracker` - 固定パラメータ
 - `ByteTrackerTuned` - シーケンス固有パラメータ
 - `BoostTrack` - 基本BoostTrack
+- `BoostTrackECC` - ECC付きBoostTrack（カメラモーション補正）
 - `BoostTrackPlus` - BoostTrack+
 - `BoostTrackPlusPlus` - BoostTrack++
+- `OCSortTracker` - OC-SORT（Observation-Centric SORT）
 
 #### Step 3: TrackEval評価
 
@@ -169,7 +179,7 @@ cargo run --release --bin mot_benchmark -- \
 uv run python scripts/evaluate.py --trackers ByteTrackerTuned
 
 # 複数トラッカー比較
-uv run python scripts/evaluate.py --trackers ByteTrackerTuned BoostTrack BoostTrackPlusPlus
+uv run python scripts/evaluate.py --trackers ByteTrackerTuned BoostTrack BoostTrackECC BoostTrackPlusPlus
 ```
 
 ## Python公式実装との比較
@@ -208,18 +218,21 @@ uv run python scripts/evaluate.py \
 | **OfficialBoostTrack++ECC (Python)** | **69.71** | 79.92 | **79.82** | **287** |
 | OfficialBoostTrackECC (Python) | 69.28 | 79.17 | 79.10 | 308 |
 | **ByteTrackerTuned (Rust)** | 68.55 | **80.95** | 78.27 | 450 |
+| BoostTrackECC (Rust) | 68.38 | 79.11 | 77.71 | 349 |
+| ByteTracker (Rust) | 68.35 | 80.97 | 77.89 | 454 |
 | OfficialByteTrackerTuned (Python) | 67.92 | 80.90 | 77.47 | 453 |
 | OfficialBoostTrack++ (Python) | 67.87 | 78.89 | 76.91 | 515 |
+| OCSortTracker (Rust) | 67.73 | 78.55 | 76.67 | 484 |
 | OfficialBoostTrack (Python) | 67.30 | 78.26 | 76.00 | 520 |
-| BoostTrack (Rust) | 66.18 | 78.20 | 74.27 | 539 |
-| BoostTrack++ (Rust) | 66.11 | 78.81 | 74.21 | 570 |
-| OfficialByteTracker (Python) | 59.73 | 70.31 | 69.94 | 483 |
-| ByteTracker (Rust) | 58.98 | 69.91 | 68.68 | 503 |
-| BoostTrackPlus (Rust) | 56.62 | 66.47 | 65.40 | 774 |
+| OfficialByteTracker (Python) | 67.82 | 80.92 | 77.29 | 458 |
+| BoostTrack++ (Rust) | 66.02 | 78.86 | 74.29 | 558 |
+| BoostTrack (Rust) | 66.03 | 78.24 | 74.13 | 536 |
+| BoostTrackPlus (Rust) | 65.93 | 78.57 | 74.11 | 560 |
 
 > **Note**:
 > - ECC版はカメラモーション補正により、特にHOTA/IDF1/IDSWで大きな改善
-> - Rust版BoostTrackはECC（カメラモーション補正）とEmbedding（Re-ID特徴量）が未実装のため、HOTA/IDF1が若干低い
+> - このベンチマークには Rust `BoostTrackECC`（ECC有効）を含む
+> - このリポジトリの Python `OfficialBoostTrack*` は `use_embedding=False`（Re-ID無効）で計測
 > - MOTAはコアアルゴリズムで決まるため、Rust版とPython版でほぼ同等
 
 ### YOLOX-S 検出器使用 (軽量版)
@@ -242,25 +255,28 @@ uv run python scripts/evaluate.py \
 
 ### 実装済み機能
 
-| 機能 | ByteTracker | BoostTracker |
-|------|:-----------:|:------------:|
-| Kalman Filter | ✅ | ✅ |
-| IoU Association | ✅ | ✅ |
-| 2段階マッチング | ✅ | - |
-| DLO Boost | - | ✅ |
-| DUO Boost | - | ✅ |
-| Mahalanobis距離 | - | ✅ |
-| Shape Similarity | - | ✅ |
-| Soft BIoU | - | ✅ |
+| 機能 | ByteTracker | BoostTracker | OC-SORT |
+|------|:-----------:|:------------:|:-------:|
+| Kalman Filter | ✅ | ✅ | ✅ |
+| IoU Association | ✅ | ✅ | ✅ |
+| 2段階マッチング (BYTE) | ✅ | - | optional |
+| VDC（速度方向一貫性） | - | - | ✅ |
+| OCR（Observation-Centric再関連付け） | - | - | ✅ |
+| Online Smoothing（KF凍結/解凍） | - | - | ✅ |
+| DLO Boost | - | ✅ | - |
+| DUO Boost | - | ✅ | - |
+| Mahalanobis距離 | - | ✅ | - |
+| Shape Similarity | - | ✅ | - |
+| Soft BIoU | - | ✅ | - |
+| ECC（カメラモーション補正） | - | ✅ | - |
 
 ### 未実装機能 (BoostTracker)
 
 | 機能 | 説明 | 影響 |
 |------|------|------|
-| **ECC** | カメラモーション補正 | 動くカメラでのIDSW増加 |
 | **Embedding** | Re-ID特徴量 (CNN) | HOTA/IDF1の低下 |
 
-これらの機能が未実装のため、Rust版BoostTrackのHOTA/IDF1は公式Python版より若干低くなります。MOTAはコアアルゴリズムで決まるため、ほぼ同等の値を達成しています。
+このベンチマーク設定ではEmbeddingを使っていないため、HOTA/IDF1にはPython版との差が少し残ります。MOTAはコアアルゴリズムで決まるため、ほぼ同等の値です。
 
 ## トラブルシューティング
 
@@ -295,5 +311,6 @@ MIT License
 
 - [ByteTrack](https://github.com/ifzhang/ByteTrack)
 - [BoostTrack](https://github.com/vukasin-stanojevic/BoostTrack)
+- [OC-SORT](https://github.com/noahcao/OC_SORT)
 - [MOTChallenge](https://motchallenge.net/)
 - [TrackEval](https://github.com/JonathonLuiten/TrackEval)
